@@ -35,7 +35,7 @@ This package centralizes those concerns into a **single, composable, and testabl
 ## Installation
 
 ```bash
-npm install @my-f*-startup/firebase-auth-express
+npm install @my-f-startup/firebase-auth-express
 ```
 
 ---
@@ -49,7 +49,7 @@ import {
   firebaseAuthMiddleware,
   requireAuth,
   requireRole,
-} from "@my-f*-startup/firebase-auth-express";
+} from "@my-f-startup/firebase-auth-express";
 
 admin.initializeApp({ projectId: "demo-project" });
 
