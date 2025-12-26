@@ -81,10 +81,11 @@ const buildApp = ({
 
 const tokens = {
   "token-user": makeToken({ uid: "user-123", roles: ["user"] }),
+  "token-identity": makeToken({ uid: "user-456" }),
   "token-admin": makeToken({ uid: "admin-001", roles: ["admin"] }),
   "token-support": makeToken({ uid: "support-007", roles: ["support"] }),
   "token-no-roles": makeToken({ uid: "user-999" }),
-  "token-tenant": makeToken({ uid: "user-456", roles: ["admin"], tenant: "tenant-42" }),
+  "token-tenant": makeToken({ uid: "user-789", roles: ["admin"], tenant: "tenant-42" }),
 };
 
 const originalAdminAuth = admin.auth;
@@ -94,6 +95,7 @@ afterEach(() => {
 });
 
 describe("integration: authenticate incoming requests", () => {
+  // Feature: Authenticate incoming requests | Scenario: Request with a valid identity token is accepted
   it("accepts a request with a valid identity token", async () => {
     const app = buildApp({ authClient: createInMemoryAuthClient(tokens) });
 
@@ -103,12 +105,14 @@ describe("integration: authenticate incoming requests", () => {
       .expect(200, { uid: "user-123" });
   });
 
+  // Feature: Authenticate incoming requests | Scenario: Request without an identity token is rejected
   it("rejects requests without an identity token", async () => {
     const app = buildApp({ authClient: createInMemoryAuthClient(tokens) });
 
     await request(app).get("/protected").expect(401, { error: "Unauthorized" });
   });
 
+  // Feature: Authenticate incoming requests | Extra: invalid token
   it("rejects requests with invalid tokens", async () => {
     const app = buildApp({ authClient: createInMemoryAuthClient(tokens) });
 
@@ -120,6 +124,7 @@ describe("integration: authenticate incoming requests", () => {
 });
 
 describe("integration: protect handlers that require authentication", () => {
+  // Feature: Protect handlers that require authentication | Scenario: Protected operation is executed by an authenticated user
   it("executes protected handler for authenticated user", async () => {
     const app = buildApp({ authClient: createInMemoryAuthClient(tokens) });
 
@@ -129,6 +134,7 @@ describe("integration: protect handlers that require authentication", () => {
       .expect(200, { uid: "user-123" });
   });
 
+  // Feature: Protect handlers that require authentication | Scenario: Protected operation is blocked for unauthenticated requests
   it("blocks unauthenticated access to protected handler", async () => {
     const app = buildApp({ authClient: createInMemoryAuthClient(tokens) });
 
@@ -137,6 +143,7 @@ describe("integration: protect handlers that require authentication", () => {
 });
 
 describe("integration: authorize access based on user roles", () => {
+  // Feature: Authorize access based on user roles | Scenario: User with required role can access the operation
   it("allows user with required role", async () => {
     const app = buildApp({ authClient: createInMemoryAuthClient(tokens) });
 
@@ -146,6 +153,7 @@ describe("integration: authorize access based on user roles", () => {
       .expect(200, { uid: "admin-001" });
   });
 
+  // Feature: Authorize access based on user roles | Scenario: User without required role cannot access the operation
   it("blocks user without required role", async () => {
     const app = buildApp({ authClient: createInMemoryAuthClient(tokens) });
 
@@ -155,6 +163,7 @@ describe("integration: authorize access based on user roles", () => {
       .expect(403, { error: "Forbidden" });
   });
 
+  // Feature: Authorize access based on user roles | Scenario Outline: User with any allowed role can access the operation | Example: support-007
   it("allows any role from an allowed list", async () => {
     const app = buildApp({ authClient: createInMemoryAuthClient(tokens) });
 
@@ -166,6 +175,7 @@ describe("integration: authorize access based on user roles", () => {
 });
 
 describe("integration: reject access when role information is missing", () => {
+  // Feature: Reject access when role information is missing | Scenario: User without role information cannot access a role-protected operation
   it("blocks role-protected operations when roles are absent", async () => {
     const app = buildApp({ authClient: createInMemoryAuthClient(tokens) });
 
@@ -177,6 +187,7 @@ describe("integration: reject access when role information is missing", () => {
 });
 
 describe("integration: compose authentication and authorization", () => {
+  // Feature: Compose authentication and authorization rules | Scenario: Authentication is checked before role authorization
   it("rejects unauthenticated requests before role checks", async () => {
     let roleChecked = false;
     const app = buildApp({ authClient: createInMemoryAuthClient(tokens), useRoleHandler: false });
@@ -195,6 +206,7 @@ describe("integration: compose authentication and authorization", () => {
     assert.strictEqual(roleChecked, false);
   });
 
+  // Feature: Compose authentication and authorization rules | Extra: role authorization after authentication
   it("authorizes only after successful authentication", async () => {
     const app = buildApp({ authClient: createInMemoryAuthClient(tokens), useRoleHandler: false });
 
@@ -213,17 +225,29 @@ describe("integration: compose authentication and authorization", () => {
 });
 
 describe("integration: expose authenticated user identity", () => {
+  // Feature: Expose the authenticated user identity | Scenario: Access the authenticated user identifier
+  it("exposes uid on the request", async () => {
+    const app = buildApp({ authClient: createInMemoryAuthClient(tokens) });
+
+    await request(app)
+      .get("/identity")
+      .set("Authorization", "Bearer token-identity")
+      .expect(200, { uid: "user-456" });
+  });
+
+  // Feature: Expose the authenticated user identity | Scenario: Authenticated request contains the full identity context
   it("exposes uid and claims on the request", async () => {
     const app = buildApp({ authClient: createInMemoryAuthClient(tokens) });
 
     await request(app)
       .get("/identity")
       .set("Authorization", "Bearer token-tenant")
-      .expect(200, { uid: "user-456", roles: ["admin"], tenant: "tenant-42" });
+      .expect(200, { uid: "user-789", roles: ["admin"], tenant: "tenant-42" });
   });
 });
 
 describe("integration: fail fast when auth infrastructure is not initialized", () => {
+  // Feature: Fail fast when authentication infrastructure is not initialized | Scenario: Authentication fails when identity verification is not available
   it("returns a configuration error when auth client is unavailable", async () => {
     Object.defineProperty(admin, "auth", {
       value: () => {
@@ -242,6 +266,7 @@ describe("integration: fail fast when auth infrastructure is not initialized", (
 });
 
 describe("integration: work consistently across environments", () => {
+  // Feature: Work consistently across environments | Scenario: Local environment behaves the same as production
   it("behaves the same using injected auth client and default admin auth", async () => {
     const injectedApp = buildApp({ authClient: createInMemoryAuthClient(tokens) });
 

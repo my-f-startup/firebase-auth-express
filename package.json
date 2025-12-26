@@ -1,5 +1,5 @@
 {
-  "name": "@my-f-startup/firebase-auth-express",
+  "name": "@my-f*-startup/firebase-auth-express",
   "version": "0.1.0",
   "description": "Express middleware and guards for Firebase Authentication.",
   "main": "dist/index.js",
@@ -21,7 +21,7 @@
     "rbac",
     "security"
   ],
-  "author": "My F* Startup",
+  "author": "My Fucking Startup",
   "license": "MIT",
   "type": "commonjs",
   "repository": {

@@ -52,6 +52,7 @@ afterEach(() => {
 });
 
 describe("firebaseAuthMiddleware", () => {
+  // Feature: Authenticate incoming requests | Scenario: Request with a valid identity token is accepted
   it("accepts a valid identity token and exposes uid", async () => {
     const authClient: FakeAuthClient = {
       verifyIdToken: async () => makeToken({ uid: "user-123", roles: ["user"], tenant: "tenant-1" }),
@@ -71,6 +72,7 @@ describe("firebaseAuthMiddleware", () => {
       .expect(200, { uid: "user-123" });
   });
 
+  // Feature: Authenticate incoming requests | Scenario: Request without an identity token is rejected
   it("rejects requests without an identity token", async () => {
     const authClient: FakeAuthClient = { verifyIdToken: async () => makeToken({ uid: "user-123" }) };
     const app = buildApp((app) => {
@@ -81,6 +83,7 @@ describe("firebaseAuthMiddleware", () => {
     await request(app).get("/protected").expect(401, { error: "Unauthorized" });
   });
 
+  // Feature: Authenticate incoming requests | Extra: malformed authorization header
   it("rejects malformed authorization headers", async () => {
     const authClient: FakeAuthClient = { verifyIdToken: async () => makeToken({ uid: "user-123" }) };
     const app = buildApp((app) => {
@@ -93,6 +96,7 @@ describe("firebaseAuthMiddleware", () => {
     });
   });
 
+  // Feature: Authenticate incoming requests | Extra: invalid token
   it("returns 401 when token verification fails", async () => {
     const authClient: FakeAuthClient = {
       verifyIdToken: async () => {
@@ -109,6 +113,7 @@ describe("firebaseAuthMiddleware", () => {
     });
   });
 
+  // Feature: Authenticate incoming requests | Extra: token without uid
   it("returns 401 when verification succeeds without uid", async () => {
     const authClient: FakeAuthClient = {
       verifyIdToken: async () => makeToken({ uid: "" }),
@@ -123,6 +128,7 @@ describe("firebaseAuthMiddleware", () => {
     });
   });
 
+  // Feature: Fail fast when authentication infrastructure is not initialized | Scenario: Authentication fails when identity verification is not available
   it("fails fast when auth infrastructure is not initialized", async () => {
     Object.defineProperty(admin, "auth", {
       value: () => {
@@ -141,6 +147,7 @@ describe("firebaseAuthMiddleware", () => {
     });
   });
 
+  // Feature: Work consistently across environments | Scenario: Local environment behaves the same as production
   it("behaves consistently with injected auth client and default admin auth", async () => {
     const injectedClient: FakeAuthClient = {
       verifyIdToken: async () => makeToken({ uid: "user-789", roles: ["user"] }),
@@ -180,9 +187,10 @@ describe("firebaseAuthMiddleware", () => {
       .expect(200, { uid: "user-789" });
   });
 
-  it("exposes full identity context to handlers", async () => {
+  // Feature: Expose the authenticated user identity | Scenario: Access the authenticated user identifier
+  it("exposes uid on the request", async () => {
     const authClient: FakeAuthClient = {
-      verifyIdToken: async () => makeToken({ uid: "user-456", roles: ["admin"], tenant: "tenant-42" }),
+      verifyIdToken: async () => makeToken({ uid: "user-456" }),
     };
 
     const app = buildApp((app) => {
@@ -196,11 +204,32 @@ describe("firebaseAuthMiddleware", () => {
     await request(app)
       .get("/identity")
       .set("Authorization", "Bearer ok")
-      .expect(200, { uid: "user-456", roles: ["admin"], tenant: "tenant-42" });
+      .expect(200, { uid: "user-456" });
+  });
+
+  // Feature: Expose the authenticated user identity | Scenario: Authenticated request contains the full identity context
+  it("exposes full identity context to handlers", async () => {
+    const authClient: FakeAuthClient = {
+      verifyIdToken: async () => makeToken({ uid: "user-789", roles: ["admin"], tenant: "tenant-42" }),
+    };
+
+    const app = buildApp((app) => {
+      app.use(firebaseAuthMiddleware({ authClient }));
+      app.get("/identity", (req, res) => {
+        const auth = (req as AuthenticatedRequest).auth!;
+        res.json({ uid: auth.uid, roles: auth.token.roles, tenant: auth.token.tenant });
+      });
+    });
+
+    await request(app)
+      .get("/identity")
+      .set("Authorization", "Bearer ok")
+      .expect(200, { uid: "user-789", roles: ["admin"], tenant: "tenant-42" });
   });
 });
 
 describe("requireAuth", () => {
+  // Feature: Protect handlers that require authentication | Scenario: Protected operation is executed by an authenticated user
   it("executes handler when authenticated", async () => {
     const app = buildApp((app) => {
       app.use(seedAuth({ uid: "user-321", token: {} as any }));
@@ -215,6 +244,7 @@ describe("requireAuth", () => {
     await request(app).get("/protected").expect(200, { uid: "user-321" });
   });
 
+  // Feature: Protect handlers that require authentication | Scenario: Protected operation is blocked for unauthenticated requests
   it("blocks unauthenticated requests", async () => {
     const app = buildApp((app) => {
       app.get(
@@ -230,6 +260,7 @@ describe("requireAuth", () => {
 });
 
 describe("requireRole", () => {
+  // Feature: Authorize access based on user roles | Scenario: User with required role can access the operation
   it("allows access when the required role is present", async () => {
     const app = buildApp((app) => {
       app.use(seedAuth({ uid: "admin-001", token: { roles: ["admin"] } as any }));
@@ -244,6 +275,7 @@ describe("requireRole", () => {
     await request(app).get("/admin").expect(200, { uid: "admin-001" });
   });
 
+  // Feature: Authorize access based on user roles | Scenario: User without required role cannot access the operation
   it("blocks when required role is missing", async () => {
     const app = buildApp((app) => {
       app.use(seedAuth({ uid: "user-002", token: { roles: ["user"] } as any }));
@@ -258,6 +290,7 @@ describe("requireRole", () => {
     await request(app).get("/admin").expect(403, { error: "Forbidden" });
   });
 
+  // Feature: Authorize access based on user roles | Scenario Outline: User with any allowed role can access the operation | Examples: admin-003, support-007
   it("allows access when any allowed role matches", async () => {
     const examples: Array<{ uid: string; role: Role }> = [
       { uid: "admin-003", role: "admin" },
@@ -269,10 +302,10 @@ describe("requireRole", () => {
         app.use(seedAuth({ uid: example.uid, token: { roles: [example.role] } as any }));
         app.get(
           "/restricted",
-        requireRole(["admin", "support"], (req, res) => {
-          res.json({ uid: req.auth!.uid });
-        })
-      );
+          requireRole(["admin", "support"], (req, res) => {
+            res.json({ uid: req.auth!.uid });
+          })
+        );
       });
 
       await request(app)
@@ -281,6 +314,7 @@ describe("requireRole", () => {
     }
   });
 
+  // Feature: Reject access when role information is missing | Scenario: User without role information cannot access a role-protected operation
   it("rejects when role information is missing", async () => {
     const app = buildApp((app) => {
       app.use(seedAuth({ uid: "user-999", token: {} as any }));
@@ -295,6 +329,7 @@ describe("requireRole", () => {
     await request(app).get("/role-protected").expect(403, { error: "Forbidden" });
   });
 
+  // Feature: Compose authentication and authorization rules | Scenario: Authentication is checked before role authorization
   it("runs authentication before role authorization", async () => {
     let roleChecked = false;
 
@@ -321,6 +356,7 @@ describe("requireRole", () => {
     assert.strictEqual(roleChecked, false);
   });
 
+  // Feature: Compose authentication and authorization rules | Extra: role authorization after authentication
   it("returns forbidden when authenticated but missing required role", async () => {
     const app = buildApp((app) => {
       app.use(

@@ -65,12 +65,8 @@ let emulatorPort = 0;
 const emulatorUrl = () => `http://${emulatorHost}:${emulatorPort}`;
 
 const startEmulator = async () => {
-  const built = await GenericContainer.fromDockerfile(
-    path.join(process.cwd(), "test", "firebase"),
-    "Dockerfile.firebase"
-  ).build();
-
-  const container = await built
+  const container = await new GenericContainer("myfstartup/firebase-emulator-suite:15")
+    .withPlatform("linux/amd64")
     .withExposedPorts(4000, 9099)
     .withBindMounts([
       {
@@ -84,7 +80,7 @@ const startEmulator = async () => {
         mode: "ro" as const,
       },
     ])
-    .withEnvironment({ FIREBASE_PROJECT_ID: projectId })
+    .withEnvironment({ PROJECT_ID: projectId })
     .withWaitStrategy(Wait.forHealthCheck())
     .start();
 
@@ -173,6 +169,7 @@ afterEach(async () => {
 });
 
 describe("e2e: authenticate incoming requests", () => {
+  // Feature: Authenticate incoming requests | Scenario: Request with a valid identity token is accepted
   it("accepts a request with a valid identity token", async () => {
     const { uid, idToken } = await createUserWithClaims({
       email: "user-123@example.com",
@@ -186,6 +183,7 @@ describe("e2e: authenticate incoming requests", () => {
       .expect(200, { uid });
   });
 
+  // Feature: Authenticate incoming requests | Scenario: Request without an identity token is rejected
   it("rejects requests without an identity token", async () => {
     const app = buildApp();
 
@@ -194,6 +192,7 @@ describe("e2e: authenticate incoming requests", () => {
 });
 
 describe("e2e: protect handlers that require authentication", () => {
+  // Feature: Protect handlers that require authentication | Scenario: Protected operation is executed by an authenticated user
   it("executes protected handler for authenticated user", async () => {
     const { uid, idToken } = await createUserWithClaims({
       email: "user-321@example.com",
@@ -207,6 +206,7 @@ describe("e2e: protect handlers that require authentication", () => {
       .expect(200, { uid });
   });
 
+  // Feature: Protect handlers that require authentication | Scenario: Protected operation is blocked for unauthenticated requests
   it("blocks unauthenticated access to protected handler", async () => {
     const app = buildApp();
 
@@ -215,6 +215,7 @@ describe("e2e: protect handlers that require authentication", () => {
 });
 
 describe("e2e: authorize access based on user roles", () => {
+  // Feature: Authorize access based on user roles | Scenario: User with required role can access the operation
   it("allows user with required role", async () => {
     const { uid, idToken } = await createUserWithClaims({
       email: "admin-001@example.com",
@@ -229,6 +230,7 @@ describe("e2e: authorize access based on user roles", () => {
       .expect(200, { uid });
   });
 
+  // Feature: Authorize access based on user roles | Scenario: User without required role cannot access the operation
   it("blocks user without required role", async () => {
     const { idToken } = await createUserWithClaims({
       email: "user-002@example.com",
@@ -243,6 +245,7 @@ describe("e2e: authorize access based on user roles", () => {
       .expect(403, { error: "Forbidden" });
   });
 
+  // Feature: Authorize access based on user roles | Scenario Outline: User with any allowed role can access the operation | Example: support-007
   it("allows access when any allowed role matches", async () => {
     const { uid, idToken } = await createUserWithClaims({
       email: "support-007@example.com",
@@ -259,6 +262,7 @@ describe("e2e: authorize access based on user roles", () => {
 });
 
 describe("e2e: reject access when role information is missing", () => {
+  // Feature: Reject access when role information is missing | Scenario: User without role information cannot access a role-protected operation
   it("blocks role-protected operations when roles are absent", async () => {
     const { idToken } = await createUserWithClaims({
       email: "user-999@example.com",
@@ -274,6 +278,7 @@ describe("e2e: reject access when role information is missing", () => {
 });
 
 describe("e2e: compose authentication and authorization", () => {
+  // Feature: Compose authentication and authorization rules | Scenario: Authentication is checked before role authorization
   it("rejects unauthenticated requests before role checks", async () => {
     let roleChecked = false;
     const app = buildApp({ withRoles: false });
@@ -291,6 +296,7 @@ describe("e2e: compose authentication and authorization", () => {
     assert.strictEqual(roleChecked, false);
   });
 
+  // Feature: Compose authentication and authorization rules | Extra: role authorization after authentication
   it("authorizes only after successful authentication", async () => {
     const { idToken } = await createUserWithClaims({
       email: "user-no-role@example.com",
@@ -312,10 +318,25 @@ describe("e2e: compose authentication and authorization", () => {
 });
 
 describe("e2e: expose authenticated user identity", () => {
-  it("exposes uid and claims on the request", async () => {
+  // Feature: Expose the authenticated user identity | Scenario: Access the authenticated user identifier
+  it("exposes uid on the request", async () => {
     const { uid, idToken } = await createUserWithClaims({
       email: "user-456@example.com",
       password: "password-456",
+    });
+    const app = buildApp();
+
+    await request(app)
+      .get("/identity")
+      .set("Authorization", `Bearer ${idToken}`)
+      .expect(200, { uid });
+  });
+
+  // Feature: Expose the authenticated user identity | Scenario: Authenticated request contains the full identity context
+  it("exposes uid and claims on the request", async () => {
+    const { uid, idToken } = await createUserWithClaims({
+      email: "user-789@example.com",
+      password: "password-789",
       claims: { roles: ["admin"], tenant: "tenant-42" },
     });
     const app = buildApp();
@@ -328,6 +349,7 @@ describe("e2e: expose authenticated user identity", () => {
 });
 
 describe("e2e: fail fast when auth infrastructure is not initialized", () => {
+  // Feature: Fail fast when authentication infrastructure is not initialized | Scenario: Authentication fails when identity verification is not available
   it("returns a configuration error when auth client is unavailable", async () => {
     await Promise.all(admin.apps.map((app) => app.delete()));
     const app = buildApp({ initializeAdmin: false });
@@ -340,6 +362,7 @@ describe("e2e: fail fast when auth infrastructure is not initialized", () => {
 });
 
 describe("e2e: work consistently across environments", () => {
+  // Feature: Work consistently across environments | Scenario: Local environment behaves the same as production
   it("behaves the same using emulator and default auth client", async () => {
     const { uid, idToken } = await createUserWithClaims({
       email: "user-789@example.com",

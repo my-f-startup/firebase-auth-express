@@ -106,10 +106,15 @@ When using the Firebase Auth emulator locally:
 
 ```bash
 export FIREBASE_AUTH_EMULATOR_HOST=localhost:9099
-export GCLOUD_PROJECT=demo-project
+export PROJECT_ID=demo-project
 ```
 
 The `firebase-admin` SDK automatically routes authentication calls to the emulator when `FIREBASE_AUTH_EMULATOR_HOST` is set.
+
+### Emulator image for E2E tests
+
+The E2E suite uses the Docker image `myfstartup/firebase-emulator-suite:15` via Testcontainers.
+The container expects `PROJECT_ID` and supports mounting `firebase.json` and `.firebaserc` into `/app` for configuration.
 
 ---
 
