@@ -1,4 +1,4 @@
-# firebase-auth-express
+# @my-f-startup/firebase-auth-express
 
 Zero-trust Firebase Authentication middleware for Express.js.
 
@@ -24,11 +24,11 @@ This package centralizes those concerns into a **single, composable, and testabl
 
 ## Features
 
-- **Zero-trust authentication** – Validates Firebase ID tokens on every request
-- **Typed identity context** – Populates `req.auth` with `uid` and token claims
-- **Role-based authorization** – `requireRole` enforces custom-claim roles
-- **Composable guards** – Clear separation between authentication and authorization
-- **Emulator-first testing** – Unit, integration, and E2E tests using Firebase Auth emulator
+- ✅ **Zero-trust authentication** – Validates Firebase ID tokens on every request
+- ✅ **Typed identity context** – Populates `req.auth` with `uid` and token claims
+- ✅ **Role-based authorization** – `requireRole` enforces custom-claim roles
+- ✅ **Composable guards** – Clear separation between authentication and authorization
+- ✅ **Emulator-first testing** – Unit, integration, and E2E tests using Firebase Auth emulator
 
 ---
 
@@ -37,6 +37,11 @@ This package centralizes those concerns into a **single, composable, and testabl
 ```bash
 npm install @my-f-startup/firebase-auth-express
 ```
+
+### Peer Dependencies
+
+- `express` ^4.19.2 || ^5.0.0
+- `firebase-admin` ^13.6.0
 
 ---
 
@@ -228,3 +233,47 @@ This ensures production-like behavior without external dependencies.
 - OAuth flows
 
 This package focuses strictly on **request authentication and authorization**.
+
+---
+
+## Changelog
+
+The [CHANGELOG.md](CHANGELOG.md) file is **automatically generated** during pull requests. Do not edit it manually.
+
+### How it works
+
+A GitHub Actions workflow runs [git-chglog](https://github.com/git-chglog/git-chglog) to generate the changelog from commit messages. Only commits following the [Conventional Commits](https://www.conventionalcommits.org/) format are included.
+
+### Commit format
+
+```text
+<type>(<scope>): <description>
+```
+
+- **type**: Required. One of `feat`, `fix`, `refactor`, `perf`
+- **scope**: Optional. Component or area affected (e.g., `auth`, `api`)
+- **description**: Required. Short summary of the change
+
+### Recognized commit types
+
+| Type       | Changelog section |
+| ---------- | ----------------- |
+| `feat`     | Added             |
+| `fix`      | Fixed             |
+| `refactor` | Changed           |
+| `perf`     | Changed           |
+
+Other types (`chore`, `docs`, `test`, `style`, `ci`, `build`) are not included in the changelog.
+
+### Examples
+
+```bash
+feat: Add configurable timeout to token verification
+fix(middleware): Correct token expiration check
+refactor: Simplify error handling logic
+perf: Optimize token verification path
+```
+
+---
+
+Made with ❤️ by My F* Startup
