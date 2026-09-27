@@ -125,10 +125,18 @@ The container expects `PROJECT_ID` and supports mounting `firebase.json` and `.f
 Factory that returns an Express middleware. It:
 
 - Requires `Authorization: Bearer <token>`
-- Calls `admin.auth().verifyIdToken(token)`
+- Calls `admin.auth().verifyIdToken(token)`, bounded by a timeout
 - Sets `req.auth = { uid, token }`
 - Returns `401` on missing or invalid token
 - Returns `500` if the auth infrastructure is not initialized
+- Returns `503` if token verification does not resolve within `verifyTimeoutMs`
+
+**Options:**
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `authClient` | `AuthClient` | `admin.auth()` | Custom auth client, for tests or alternate Firebase Auth instances |
+| `verifyTimeoutMs` | `number` | `5000` | Maximum time to wait for token verification. The underlying `firebase-admin` call has no timeout of its own: if its connection to the Auth service goes silently dead (e.g. after a network interruption), it can hang indefinitely rather than rejecting |
 
 You can inject a custom auth client for tests:
 
@@ -138,6 +146,12 @@ firebaseAuthMiddleware({
     verifyIdToken: async (token) => ({ uid: "user-1" } as any),
   },
 });
+```
+
+Or tune the verification timeout:
+
+```ts
+firebaseAuthMiddleware({ verifyTimeoutMs: 3000 });
 ```
 
 ---

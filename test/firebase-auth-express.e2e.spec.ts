@@ -165,7 +165,7 @@ after(async () => {
 
 afterEach(async () => {
   await resetAuthEmulator();
-  await Promise.all(admin.apps.map((app) => app.delete()));
+  await Promise.all(admin.apps.filter((app) => app !== null).map((app) => app.delete()));
 });
 
 describe("e2e: authenticate incoming requests", () => {
@@ -351,7 +351,7 @@ describe("e2e: expose authenticated user identity", () => {
 describe("e2e: fail fast when auth infrastructure is not initialized", () => {
   // Feature: Fail fast when authentication infrastructure is not initialized | Scenario: Authentication fails when identity verification is not available
   it("returns a configuration error when auth client is unavailable", async () => {
-    await Promise.all(admin.apps.map((app) => app.delete()));
+    await Promise.all(admin.apps.filter((app) => app !== null).map((app) => app.delete()));
     const app = buildApp({ initializeAdmin: false });
 
     await request(app)
