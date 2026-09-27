@@ -113,6 +113,22 @@ describe("firebaseAuthMiddleware", () => {
     });
   });
 
+  // Extra: token verification hangs indefinitely (e.g. a dead connection to
+  // the Auth service that never rejects) - the request must still resolve.
+  it("returns 503 when token verification hangs past the timeout", async () => {
+    const authClient: FakeAuthClient = {
+      verifyIdToken: () => new Promise(() => {}),
+    };
+    const app = buildApp((app) => {
+      app.use(firebaseAuthMiddleware({ authClient, verifyTimeoutMs: 20 }));
+      app.get("/protected", (_req, res) => res.json({ ok: true }));
+    });
+
+    await request(app).get("/protected").set("Authorization", "Bearer bad").expect(503, {
+      error: "Auth service unavailable",
+    });
+  });
+
   // Feature: Authenticate incoming requests | Extra: token without uid
   it("returns 401 when verification succeeds without uid", async () => {
     const authClient: FakeAuthClient = {
